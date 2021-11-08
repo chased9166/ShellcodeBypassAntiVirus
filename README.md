@@ -6,7 +6,7 @@
 
 免杀这种东西公开出来肯定就没什么效果啦，懂得都懂，不过我这个东西技术含量不高，所以也没什么可惜的。
 
-现在是2021年9月2日，加密了一个cobalt strike的shellcode，能够正常上线的，VT测试了一下效果还是可以哦！3/67（我都用VT了说明真的不在乎什么了- -）
+现在是2021年9月2日，加密了一个cobalt strike的shellcode，能够正常上线的，VT测试了一下效果还是可以哦！3/67
 
 https://www.virustotal.com/gui/file/f47eb13ef5b62a6539681a7e4f5219fb32c0d819e781528694b36102c734aa20/detection
 
